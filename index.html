@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="content-type" content="text/html">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Скрипт для amoCRM </title>
+</head>
+<style>
+* {margin: 0;padding: 0;box-sizing: border-box;font-size: 20px;font-family:Georgia, 'Times New Roman', Times, serif;}
+body{background: #CFCFCF;}
+form.createTasks {display: flex;flex-direction: column;width: clamp(300px, 30vw, 700px);padding: 2vw;border: 1px grey solid;border-radius: 5px;}
+wrapper {width: 100vw;height: clamp(700px,100vh, 1500px);display: flex;justify-content: center;align-items: center;}
+label {margin: .6vw 0;}
+input {padding: 5px;border-radius: 3px;}
+input[type="submit"],input[type="button"] {margin: 1vw 0 0;}
+
+</style>
+
+<body>
+    <wrapper>
+        <form action="javascript:void(0)" name="createTasks" id="createTasks" class="createTasks">
+            <label for="access_token">Напишите Ваш access_token для авторизации в amocrm API</label>
+            <input type="text" name="access_token" id="access_token">
+            <label for="complete_till">Напишите количество дней для выполнения задачи</label>
+            <input type="number" name="complete_till" id="complete_till" min="0" value="7">
+            <label for="url">Напишите адресс Вашего хоста</label>
+            <input type="text" name="url" id="url" value="https://test.amocrm.ru">
+            <label for="limit">Напишите каличество контактов для одного запроса (Максимум – 250)</label>
+            <input type="number" name="limit" id="limit" min="0" max="250" value="25">
+            <label for="text">Напишите текст для создания задачи</label>
+            <input type="text" name="text" id="text" value="Контакт без сделок">
+            <input type="submit" value="Отправить">
+        </form> 
+    </wrapper>
+    <script>
+        document.querySelector(`.createTasks`).addEventListener('submit', function (event) {
+            let userData = {} 
+            event.preventDefault()
+            let refreshButton = '<input type="button" value = "Попробовать снова" onclick="history.go(0)" />'
+
+            let form = document.forms["createTasks"];
+            let formData = new FormData(form);
+            for (let [key, value] of formData) {
+                userData[key] = value
+            }
+
+            let { access_token, userComplete_till, url, limit, text } = userData;
+
+            const headers = Object.create(null)
+            headers.aAuthorization = `Bearer ${access_token}`
+            headers['Content-Type'] = "application/json"
+
+
+            let page = 1;
+
+            const now = new Date();
+            complete_till = now.setDate(now.getDate() + userComplete_till)
+
+            url[url.length - 1] === "/" ? url.slice(0, -1) : false
+
+            const ajaxCallers = {
+                forContacts: {
+                    ajaxData: function () {
+                        let link = url + '/api/v4/contacts?order[updated_at]=asc&' + new URLSearchParams({
+                            limit, page, with: "leads"
+                        })
+                        let data = Object.create(null)
+                        data.headers = headers
+                        data.method = "GET"
+                        return {
+                            link, data
+                        }
+                    },
+                    ajaxQueryDataFn,
+                    data_Ok: createTasksListBody
+                },
+                forCreateTasks: {
+                    ajaxData: function () {
+                        let link = url + '/api/v4/tasks'
+                        let data = Object.create(null)
+                        data.headers = headers
+                        data.method = "POST"
+                        data.body = this.bodyData
+                        return { link, data }
+                    },
+                    createTasksFn,
+                    bodyData: "",
+                    ajaxQueryDataFn,
+                    data_Ok: repeatTheCycle
+
+                },
+
+            }
+
+
+            function createTasksListBody(data) {
+                let createTasksData = []
+                data.forEach(contact => {
+                    if (contact._embedded.leads.length === 0) {
+                        createTasksData.push(JSON.stringify({ taxt, complete_till, entity_id: contact.id }))
+                    }
+                })
+                ajaxCallers.forCreateTasks.createTasksFn(createTasksData)
+                page++
+
+            }
+
+            function createTasksFn(createTasksData) {
+                this.bodyData = createTasksData
+                this.ajaxQueryDataFn()
+                this.bodyData = ""
+            }
+
+            function repeatTheCycle() {
+                event.target.innerHTML =  'Задачи были созданы!'  + '<br>'+ refreshButton
+                ajaxCallers.forContacts.ajaxQueryDataFn()
+            }
+
+            function ajaxQueryDataFn() {
+                let { link, data } = this.ajaxData()
+                let data_Ok = this.data_Ok
+                asyncFetchFn(link, data, data_Ok)
+            }
+
+            async function asyncFetchFn(link, data, data_Ok) { 
+                try {
+                    const response = await fetch(link, { data })
+                    const data = await response.json();
+                    if (Object.keys(obj).length) {
+                        data_Ok(data)
+                    }
+                    else {
+                       event.target.innerHTML = 'Контактов нет:<br>код ответа ' + response.status + '<br>'+ refreshButton
+                    }
+
+                } catch (error) {
+                    event.target.innerHTML = 'Что-то пошло не так c получением контактов <br>' + error + '<br>'+ refreshButton
+                }
+
+            }
+
+
+            ajaxCallers.forContacts.ajaxQueryDataFn()
+
+        }) 
+
+    </script>
+
+</body>
+
+</html>
