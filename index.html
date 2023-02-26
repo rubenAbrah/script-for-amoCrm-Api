@@ -102,10 +102,12 @@ input[type="submit"],input[type="button"] {margin: 1vw 0 0;}
                         createTasksData.push(JSON.stringify({ taxt, complete_till, entity_id: contact.id }))
                     }
                 })
-                ajaxCallers.forCreateTasks.createTasksFn(createTasksData)
-                page++
+                 createTasksData.length ? ajaxCallers.forCreateTasks.createTasksFn(createTasksData) : false
+                page++ 
+                
+                }
 
-            }
+            
 
             function createTasksFn(createTasksData) {
                 this.bodyData = createTasksData
@@ -114,7 +116,7 @@ input[type="submit"],input[type="button"] {margin: 1vw 0 0;}
             }
 
             function repeatTheCycle() {
-                event.target.innerHTML =  'Задачи были созданы!'  + '<br>'+ refreshButton
+                event.target.innerHTML =  'Задачи были созданы!'  + '<br>'
                 ajaxCallers.forContacts.ajaxQueryDataFn()
             }
 
@@ -127,9 +129,9 @@ input[type="submit"],input[type="button"] {margin: 1vw 0 0;}
             async function asyncFetchFn(link, data, data_Ok) { 
                 try {
                     const response = await fetch(link, { data })
-                    const data = await response.json();
-                    if (Object.keys(obj).length) {
-                        data_Ok(data)
+                    const responseData = await response.json();
+                    if (Object.keys(responseData).length) {
+                        data_Ok(responseData)
                     }
                     else {
                        event.target.innerHTML = 'Контактов нет:<br>код ответа ' + response.status + '<br>'+ refreshButton
